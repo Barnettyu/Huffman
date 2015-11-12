@@ -2,69 +2,242 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct {
-	unsigned int weight;
-	unsigned int parent, lchild, rchild;
-}HTNode, *HuffmanTree;
+#define ElemType HuffmanTree
 
+typedef struct TreeNode *HuffmanTree;
 typedef char** HuffmanCode;
+	
+struct TreeNode {
+	char Character;
+	int Weight;
+	int Flag;
+	HuffmanTree Father;
+	HuffmanTree Left, Right;
+};
 
-void Select(HuffmanTree &HT, int n, int *s1, int *s2)
+typedef struct HNode *Heap;
+struct HNode {
+    ElemType *Data; 
+    int Size;         
+    int Capacity;      
+};
+
+typedef Heap MinHeap;
+
+char g_dictionary[256];
+int g_times[256];
+int g_number_of_character = 0;
+
+int Index(char c)
 {
+	for (int i=1; i<=g_number_of_character; i++)
+	{
+		if (g_dictionary[i] == c) return i;
+	}
+	g_dictionary[++g_number_of_character] = c;
+	g_times[g_number_of_character] = 0;
+	return g_number_of_character;
 }
 
-void HuffmanCoding(HuffmanTree &HT, HuffmanCode &HC, int *w, int n)
+MinHeap CreateHeap( int MaxSize )
+{ 
+ 
+    MinHeap H = (MinHeap)malloc(sizeof(struct HNode));
+    H->Data = (ElemType *)malloc((MaxSize+1)*sizeof(ElemType));
+    H->Size = MaxSize;
+    H->Capacity = MaxSize;
+    H->Data[0] = NULL;
+    
+    for (int i=1; i<=MaxSize; i++)
+	{
+		H->Data[i] = (HuffmanTree)malloc(sizeof(TreeNode));
+		
+		H->Data[i]->Character = g_dictionary[i];
+		H->Data[i]->Weight = g_times[i];
+		
+		H->Data[i]->Father = NULL;
+		H->Data[i]->Left = NULL;
+		H->Data[i]->Right = NULL;
+		H->Data[i]->Flag = 0;
+		
+	}
+ 
+    return H;
+}
+ 
+int IsFull( MinHeap H )
 {
-	if (n <= 1) return;
-	int m = 2 * n - 1;
-	HT = (HuffmanTree)malloc((m+1)*sizeof(HTNode));
-	
-	unsigned int i;
-	HuffmanTree p;
-	for (p=HT, i=1; i<=n; i++, p++, w++)
-	{
-		p->weight = *w;
-		p->lchild = 0;
-		p->rchild = 0;
-		p->parent = 0;
-	}
-	for (; i<=m; i++, p++)
-	{
-		p->weight = 0;
-		p->lchild = 0;
-		p->rchild = 0;
-		p->parent = 0;
-	}
-	for (i=n+1; i<=m; i++)
-	{
-		int s1, s2;
-		Select(HT, i-1, &s1, &s2);
-		HT[s1].parent = i;
-		HT[s2].parent = i;
-		HT[i].lchild = s1;
-		HT[i].rchild = s2;
-		HT[i].weight = HT[s1].weight + HT[s2].weight;
-	}
-	
-	HC = (HuffmanCode)malloc((n + 1) * sizeof(char *));
-	char *cd = (char *)malloc(n * sizeof(char));
-	cd[n-1] = '\0';
-	for (i=1; i<=n; i++)
-	{
-		int start = n - 1;
-		for (int c=i, f=HT[i].parent; f!=0; c=f, f=HT[f].parent)
+    return (H->Size == H->Capacity);
+}
+ 
+int Insert( MinHeap H, ElemType X )
+{
+    int i;
+  
+    if ( IsFull(H) ) { 
+        printf("最小堆已满");
+        return 0;
+    }
+    i = ++H->Size; 
+    for ( ; i>1 && H->Data[i/2]->Weight>X->Weight; i/=2 )
+        H->Data[i] = H->Data[i/2]; 
+    H->Data[i] = X;
+    return 1;
+}
+ 
+#define ERROR -1
+ 
+int IsEmpty( MinHeap H )
+{
+    return (H->Size == 0);
+}
+ 
+ElemType DeleteMin( MinHeap H )
+{ 
+    int Parent, Child;
+    ElemType MinItem, X;
+ 
+    if ( IsEmpty(H) ) {
+        printf("最小堆已为空");
+        exit(ERROR);
+    }
+ 
+    MinItem = H->Data[1];
+//    printf("%c %d\n", MinItem->Character, MinItem->Weight );
+   
+    X = H->Data[H->Size--]; 
+    for( Parent=1; Parent*2<=H->Size; Parent=Child ) {
+        Child = Parent * 2;
+        if( (Child!=H->Size) && (H->Data[Child]->Weight>H->Data[Child+1]->Weight) )
+        {
+        	Child++;  
+		}
+        if( X->Weight >= H->Data[Child]->Weight )  
 		{
-			if (HT[f].lchild == c)
+			H->Data[Parent] = H->Data[Child];
+		}
+        else break;
+    }
+    H->Data[Parent] = X;
+ 
+    return MinItem;
+} 
+ 
+void PercDown( MinHeap H, int p )
+{
+    int Parent, Child;
+    ElemType X;
+ 
+    X = H->Data[p]; 
+    for( Parent=p; Parent*2<=H->Size; Parent=Child ) {
+        Child = Parent * 2;
+        if( (Child!=H->Size) && (H->Data[Child]->Weight>H->Data[Child+1]->Weight) )
+        {
+        	Child++; 
+		}
+        if( X->Weight >= H->Data[Child]->Weight )  
+		{
+			H->Data[Parent] = H->Data[Child];
+		}
+        else break;
+    }
+    H->Data[Parent] = X;
+}
+ 
+void BuildHeap( MinHeap H )
+{
+    int i;
+ 
+    for( i = H->Size/2; i>0; i-- )
+        PercDown( H, i );
+}
+
+
+
+HuffmanTree Huffman( MinHeap H )
+{
+	HuffmanTree T;
+	BuildHeap(H);
+	while (H->Size>1) { 
+		T = (HuffmanTree)malloc( sizeof( struct TreeNode) );
+		T->Father = NULL;
+		T->Flag = 0;
+		T->Left = DeleteMin(H);	
+		T->Left->Father = T;
+		T->Right = DeleteMin(H);	
+		T->Right->Father = T;	
+		T->Weight = T->Left->Weight+T->Right->Weight;
+//		printf("%c%d\t%c%d\t%c%d\n",T->Character,T->Weight,T->Left->Character,T->Left->Weight,T->Right->Character,T->Right->Weight);
+		Insert( H, T ); 
+	}
+
+	T = DeleteMin(H);
+	return T;
+}
+
+HuffmanCode HuffmanCoding(HuffmanTree &HT, int n)
+{	
+	HuffmanCode HC = (HuffmanCode)malloc((n + 1) * sizeof(char *));
+	char *cd = (char *)malloc((n + 1) * sizeof(char));
+	
+	HuffmanTree p = HT;
+	int cdlen = 0;
+	
+	while (p)
+	{
+		if (p->Flag == 0)
+		{
+			p->Flag = 1;
+			if (p->Left) 
 			{
-				cd[--start] = '0';
+				p = p->Left;
+				cd[cdlen++] = '0';
 			}
-			else 
+			else if (p->Right == NULL)
 			{
-				cd[--start] = '1';
+				int index = Index(p->Character);
+				HC[index] = (char *)malloc((cdlen+1)*sizeof(char));
+				cd[cdlen] = '\0';
+				strcpy(HC[index], cd);
 			}
 		}
-		HC[i] = (char*) malloc((n-start)*sizeof(char));
-		strcpy(HC[i], &cd[start]);
+		else if (p->Flag == 1) 
+		{
+			p->Flag = 2;
+			if (p->Left)
+			{
+				p = p->Right;
+				cd[cdlen++] = '1';
+			}
+		}
+		else
+		{
+			p->Flag = 0; 
+			p = p->Father; 
+			cdlen--;
+		}
 	}
-	free(cd);
+	return HC;
+}
+
+int main()
+{
+	freopen("inp.txt", "r", stdin);
+	int buffer;
+	while ( (buffer=getchar())!=EOF )
+	{
+		int index = Index(buffer);
+		g_times[index]++;
+		
+	}
+	
+	MinHeap H = CreateHeap(g_number_of_character);
+	HuffmanTree HT = Huffman(H);
+	
+	HuffmanCode HC = HuffmanCoding(HT, g_number_of_character);
+	
+	for (int i=1; i<=g_number_of_character; i++)
+	{
+		printf("%c %s\n", g_dictionary[i], HC[i]);
+	}
 }
