@@ -8,7 +8,7 @@ typedef struct TreeNode *HuffmanTree;
 typedef char** HuffmanCode;
 	
 struct TreeNode {
-	char Character;
+	int Character;
 	int Weight;
 	int Flag;
 	HuffmanTree Father;
@@ -24,11 +24,11 @@ struct HNode {
 
 typedef Heap MinHeap;
 
-char g_dictionary[256];
+int g_dictionary[256];
 int g_times[256];
-int g_number_of_character = 0;
+int g_number_of_character;
 
-int Index(char c)
+int Index(int c)
 {
 	for (int i=1; i<=g_number_of_character; i++)
 	{
@@ -162,6 +162,7 @@ HuffmanTree Huffman( MinHeap H )
 		T = (HuffmanTree)malloc( sizeof( struct TreeNode) );
 		T->Father = NULL;
 		T->Flag = 0;
+		T->Character = 0;
 		T->Left = DeleteMin(H);	
 		T->Left->Father = T;
 		T->Right = DeleteMin(H);	
@@ -220,24 +221,110 @@ HuffmanCode HuffmanCoding(HuffmanTree &HT, int n)
 	return HC;
 }
 
+void Init()
+{
+	g_dictionary[1] = EOF;
+	g_times[1] = 0;
+}
+
 int main()
 {
+	Init();
+	
+	
 	freopen("inp.txt", "r", stdin);
-	int buffer;
-	while ( (buffer=getchar())!=EOF )
+	int ch;
+	while ( true )
 	{
-		int index = Index(buffer);
+		ch=getchar();
+		int index = Index(ch);
 		g_times[index]++;
+		if (ch == EOF) break;
 		
 	}
+	fclose(stdin);
+
 	
 	MinHeap H = CreateHeap(g_number_of_character);
 	HuffmanTree HT = Huffman(H);
-	
 	HuffmanCode HC = HuffmanCoding(HT, g_number_of_character);
 	
-	for (int i=1; i<=g_number_of_character; i++)
+		
+	freopen("inp.txt", "r", stdin);
+	freopen("outp.txt", "wb", stdout);
+	char buffer = 0; 		//Êä³ö»º´æ 
+	char *p;
+	int time = 0;
+	while ( ch=getchar() )
 	{
-		printf("%c %s\n", g_dictionary[i], HC[i]);
+		int index = Index(ch);
+		
+		p = HC[index];
+		while (*p)
+		{
+			buffer = buffer << 1;
+			time++;
+			if (*p == '1') buffer |= 1;
+			
+			if (time == 8)
+			{
+				fwrite(&buffer, sizeof(char), 1, stdout);
+				time = 0;
+			}
+			
+			p++;
+		}
+		
+		if (ch == EOF) 
+		{
+			if (time) 
+			{
+				while (time < 8)
+				{
+					time++;
+					buffer = buffer << 1;
+				}
+				fwrite(&buffer, sizeof(char), 1, stdout);
+			}
+			break;
+		}
+		
 	}
+	fclose(stdin);
+	fclose(stdout);
+	
+	
+	freopen("outp.txt", "rb", stdin);
+	freopen("rep.txt", "w", stdout);
+	HuffmanTree node = HT;
+	bool flag = true;
+	while ( flag && fread(&buffer, sizeof(char), 1, stdin) )
+	{	
+		for (int time=0; flag && time<8; time++)
+		{
+			if ((buffer & 0x80) == 0) 
+			{
+				node= node->Left;
+			}
+			else 
+			{
+				node = node->Right;
+			}
+			
+			if (node->Character > 0) 
+			{
+				printf("%c", node->Character);
+				node = HT;
+			}
+			else if (node->Character == EOF)
+			{
+				flag = false;
+			}
+			
+			buffer = buffer << 1;
+		}
+		
+	}
+	fclose(stdin);
+	fclose(stdout);
 }
